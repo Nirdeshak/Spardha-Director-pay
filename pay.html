@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Spardha Director Payment</title>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -28,7 +29,7 @@
 </head>
 <body>
 
-<h2>Processing Payment</h2>
+<h2>Spardha Director Payment</h2>
 
 <button id="payBtn">Pay Now</button>
 
@@ -39,30 +40,38 @@
 const params = new URLSearchParams(window.location.search);
 
 const orderId = params.get("orderId");
-const amount = params.get("amount");
+const amount = params.get("amount");      // already in paise
 const courseId = params.get("courseId");
 const key = params.get("key");
-const token = params.get("token"); // JWT from app
+const token = params.get("token");
 
 if (!orderId || !amount || !courseId || !key || !token) {
   alert("Invalid payment request");
+  throw new Error("Missing parameters");
 }
-
-/* ================= PAY BUTTON ================= */
 
 document.getElementById("payBtn").onclick = function () {
 
   var options = {
     key: key,
-    amount: amount * 100,
+    amount: amount,   // ✅ DO NOT multiply again
     currency: "INR",
+    name: "Spardha Director",
+    description: "Police Bharti Course",
     order_id: orderId,
+
+    /* ✅ Enable Only Required Payment Methods */
+    method: {
+      upi: true,
+      card: true,
+      netbanking: true,
+      wallet: true,
+      emi: false      // ❌ EMI Disabled
+    },
 
     handler: function (response) {
 
       document.getElementById("loader").style.display = "block";
-
-      /* ================= VERIFY WITH BACKEND ================= */
 
       fetch("https://api.spardhadirectorapp.online/api/v1/payment/verify", {
         method: "POST",
@@ -82,7 +91,6 @@ document.getElementById("payBtn").onclick = function () {
 
         if (data.status === "SUCCESS") {
 
-          // Redirect back to app
           window.location.href =
             "spardhadirector://payment-success?courseId=" + courseId;
 
