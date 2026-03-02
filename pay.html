@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Spardha Director Payment</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 100px;
+    }
+    #loader {
+      display: none;
+      font-size: 18px;
+      color: #333;
+    }
+    button {
+      padding: 12px 25px;
+      font-size: 16px;
+      background: #0f9d58;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Processing Payment</h2>
+
+<button id="payBtn">Pay Now</button>
+
+<p id="loader">Please wait... verifying payment</p>
+
+<script>
+
+const params = new URLSearchParams(window.location.search);
+
+const orderId = params.get("orderId");
+const amount = params.get("amount");
+const courseId = params.get("courseId");
+const key = params.get("key");
+const token = params.get("token"); // JWT from app
+
+if (!orderId || !amount || !courseId || !key || !token) {
+  alert("Invalid payment request");
+}
+
+/* ================= PAY BUTTON ================= */
+
+document.getElementById("payBtn").onclick = function () {
+
+  var options = {
+    key: key,
+    amount: amount * 100,
+    currency: "INR",
+    order_id: orderId,
+
+    handler: function (response) {
+
+      document.getElementById("loader").style.display = "block";
+
+      /* ================= VERIFY WITH BACKEND ================= */
+
+      fetch("https://api.spardhadirectorapp.online/api/v1/payment/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+          orderId: response.razorpay_order_id,
+          paymentId: response.razorpay_payment_id,
+          signature: response.razorpay_signature,
+          courseId: courseId
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+
+        if (data.status === "SUCCESS") {
+
+          // Redirect back to app
+          window.location.href =
+            "spardhadirector://payment-success?courseId=" + courseId;
+
+        } else {
+          alert("Payment verification failed");
+        }
+
+      })
+      .catch(() => {
+        alert("Server error during verification");
+      });
+    },
+
+    modal: {
+      ondismiss: function () {
+        alert("Payment cancelled");
+      }
+    },
+
+    theme: {
+      color: "#0f9d58"
+    }
+  };
+
+  var rzp = new Razorpay(options);
+  rzp.open();
+};
+
+</script>
+
+</body>
+</html>
